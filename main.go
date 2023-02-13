@@ -20,10 +20,10 @@ import (
 //s3客服端
 var s3Client *s3.Client
 var (
-	s3Bucket  = ""
-	awsAk     = ""
-	awsSk     = ""
-	cdnDomain = "" //域名
+	s3Bucket = ""
+	awsAk    = ""
+	awsSk    = ""
+	//cdnDomain = "" //域名
 	awsRegion = "" //region
 )
 
