@@ -7,17 +7,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	imgtype "github.com/shamsher31/goimgtype"
 	"image-watermark/watermark"
 	"io"
 	"log"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 )
 
-//s3客服端
+// s3客服端
 var s3Client *s3.Client
 var (
 	s3Bucket = ""
@@ -27,18 +24,11 @@ var (
 	awsRegion = "" //region
 )
 
-//图片下载和生成的存放目录
+// 图片下载和生成的存放目录
 var savePath = "/tmp"
 
-//水印在s3里面存放的前缀目录，比如以前的key=feed/sss.jpg ; 需要拼接为 key=watermark/feed/sss.jpg
+// 水印在s3里面存放的前缀目录，比如以前的key=feed/sss.jpg ; 需要拼接为 key=watermark/feed/sss.jpg
 var watermarkPrefixPath = "watermark/"
-
-// RequestData 请求的json数据
-type RequestData struct {
-	Channel string `json:"channel"`
-	Name    string `json:"name"`
-	Key     string `json:"key"`
-}
 
 // ResponseData 返回数据
 type ResponseData struct {
@@ -49,11 +39,10 @@ type BodyData struct {
 }
 
 // HandleLambdaEvent lambda
-func HandleLambdaEvent(event RequestData) (ResponseData, error) {
+func HandleLambdaEvent(event watermark.RequestData) (ResponseData, error) {
 	key := event.Key
-	log.Println("start key=" + key)
-	//如果是webp的图片，改为jpg的后缀，因为app上传有jpg的图片生成
-	key = strings.Replace(key, ".webp", ".jpg", 1)
+	username := event.Name
+	log.Println("start key=" + key + ",name=" + username)
 	//通过key,下载图片,返回下载存储的位置
 	downloadImagePath := downloadImageFromS3(key)
 	if downloadImagePath == "" {
@@ -61,7 +50,7 @@ func HandleLambdaEvent(event RequestData) (ResponseData, error) {
 	}
 	log.Println("download path=" + downloadImagePath)
 	//添加水印，返回添加后的水印地址
-	waterPath := addLog(downloadImagePath)
+	waterPath := watermark.AddLogoToImage(downloadImagePath, event)
 	if waterPath == "" {
 		return ResponseData{Body: BodyData{Data: ""}}, errors.New("水印失败")
 	}
@@ -75,8 +64,8 @@ func HandleLambdaEvent(event RequestData) (ResponseData, error) {
 	return ResponseData{Body: BodyData{Data: url}}, nil
 }
 
-//初始化
-//os.Getenv("Env") 获取各个环境变量
+// 初始化
+// os.Getenv("Env") 获取各个环境变量
 func init() {
 	//获取s3桶名
 	s3Bucket = os.Getenv("Bucket")
@@ -104,7 +93,7 @@ func init() {
 	s3Client = getAWSS3Client()
 }
 
-//获取s3客户端
+// 获取s3客户端
 func getAWSS3Client() *s3.Client {
 	options := s3.Options{
 		Region:      awsRegion,
@@ -116,7 +105,7 @@ func getAWSS3Client() *s3.Client {
 	return client
 }
 
-//从s3下载图片
+// 从s3下载图片
 func downloadImageFromS3(key string) (originImg string) {
 	// Get the first page of results for ListObjectsV2 for a bucket
 	out, err := s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
@@ -142,7 +131,7 @@ func downloadImageFromS3(key string) (originImg string) {
 	return downloadImagePath
 }
 
-//上传添加logo的图片到s3
+// 上传添加logo的图片到s3
 func uploadToS3(newImagePath string, oldKey string) (url string, err error) {
 	newKey := watermarkPrefixPath + oldKey
 	fb, err := os.Open(newImagePath)
@@ -164,71 +153,4 @@ func uploadToS3(newImagePath string, oldKey string) (url string, err error) {
 
 func main() {
 	lambda.Start(HandleLambdaEvent)
-}
-
-func addLog(sourceImage string) (waterPath string) {
-	//获取os环境变量中logo在图片中的X,Y坐标偏移
-	osOffsetX, osOffsetY := "80", "80"
-	if os.Getenv("offsetX") != "" {
-		osOffsetX = os.Getenv("offsetX")
-	}
-	offsetX, _ := strconv.Atoi(osOffsetX)
-	if os.Getenv("offsetY") != "" {
-		osOffsetY = os.Getenv("offsetY")
-	}
-	offsetY, _ := strconv.Atoi(osOffsetY)
-
-	//var sourceImage string = "/Users/mac/Desktop/1669018251853198000-2522543887406335640.jpeg"
-	//var sourceImage string = "/Users/mac/Desktop/WechatIMG723.jpeg"
-	//var sourceImage string = "/Users/mac/Desktop/dlq1f11q42430ou5tjjagrttvp-16721597133461212263597.gif"
-	//var sourceImage string = "/Users/mac/Desktop/GzauTpqIUQ8KvLRlWBMlMrrVoWWeOhGG.gif"
-	//var sourceImage string = "/Users/mac/Desktop/default_audio_live.webp"
-	imgSource, err := os.Open(sourceImage)
-	if err != nil {
-		log.Println(err)
-		return ""
-	}
-	defer imgSource.Close()
-
-	//获取图片原来的名称和后缀
-	imageBaseName := path.Base(sourceImage)
-
-	datatype, err2 := imgtype.Get(sourceImage)
-	var imgType = ""
-	if err2 != nil {
-		imgType = ""
-	} else {
-		// 根据文件类型执行响应的操作
-		switch datatype {
-		case `image/jpeg`:
-			imgType = "jpeg"
-		case `image/png`:
-			imgType = "png"
-		case `image/gif`:
-			imgType = "gif"
-		case `image/webp`:
-			imgType = "webp"
-		}
-	}
-	if imgType == "" {
-		log.Println("暂不支持的图片类型:", imgType)
-		return ""
-	}
-	waterError := err
-	newImagePath := ""
-	if imgType == "gif" {
-		//gif加水印
-		newImagePath, waterError = watermark.GifWaterMark(imgSource, imageBaseName)
-	} else if imgType == "webp" {
-		//log.Println("暂不支持的图片类型:", imgType)
-		newImagePath, waterError = watermark.WebpWatermark(offsetX, offsetY, imgType, imgSource, imageBaseName)
-	} else {
-		//png,jpg加水印
-		newImagePath, waterError = watermark.PngJpgWaterMark(offsetX, offsetY, imgType, imgSource, imageBaseName)
-	}
-	if waterError != nil {
-		log.Println("水印添加失败:", waterError)
-		return ""
-	}
-	return newImagePath
 }

@@ -8,27 +8,33 @@ import (
 	"os"
 )
 
-func GifWaterMark(imgSource *os.File, imageBaseName string) (newImagePath string, err error) {
-	gifImgs, _ := gif.DecodeAll(imgSource)
+func (myNewImage MyNewImage) GifWaterMark() (newImagePath string, err error) {
+	imgSource := myNewImage.ImgSource
+	imageBaseName := myNewImage.ImageBaseName
+	logoUrl := myNewImage.LogoUrl
+	gifImgs, er := gif.DecodeAll(imgSource)
+	if er != nil {
+		return "", er
+	}
 	var newGifImgs = make([]*image.Paletted, 0)
 	x0, y0, old := 0, 0, 0
 	//读取水印图片
-	imgWatermark, _, err := GetLogoImage(gifImgs.Image[0].Bounds().Dx())
-	//imgWatermark, isScale, err := GetLogoImage(gifImgs.Image[0].Bounds().Dx())
+	imgWatermark, _, err := GetLogoImage(gifImgs.Image[0].Bounds().Dy(), logoUrl)
+
 	if err != nil {
 		return "", err
 	}
 	logoX, logoY := gifImgs.Image[0].Bounds().Dx()-imgWatermark.Bounds().Dx(), gifImgs.Image[0].Bounds().Dy()-imgWatermark.Bounds().Dy()
 
 	offset := image.Pt(logoX, logoY)
-	//fmt.Println(logoX, logoY, imgWatermark.Bounds().Dx(), imgWatermark.Bounds().Dy(), isScale)
+
 	for k, gifImg := range gifImgs.Image {
 		img := image.NewNRGBA(gifImg.Bounds())
 		if k == 0 {
 			x0 = img.Bounds().Dx()
 			y0 = img.Bounds().Dy()
 		}
-		//fmt.Printf("%v, %v\n", img.Bounds().Dx(), img.Bounds().Dy())
+
 		if k == 0 && gifImgs.Image[k+1].Bounds().Dx() > x0 && gifImgs.Image[k+1].Bounds().Dy() > y0 {
 			old = 1
 			break
@@ -52,14 +58,13 @@ func GifWaterMark(imgSource *os.File, imageBaseName string) (newImagePath string
 	} else {
 		//保存到新文件中
 		imageNewPath := NewImageName(imageBaseName)
-		//imageNewPath := "/Users/mac/Desktop/water-" + imageBaseName
-		//fmt.Println(imageNewPath)
+
 		newFile, err2 := os.Create(imageNewPath)
 		if err2 != nil {
 			return "", err2
 		}
 		defer newFile.Close()
-		//fmt.Println(gifImgs.Delay, gifImgs.LoopCount)
+
 		g1 := &gif.GIF{
 			Image:     newGifImgs,
 			Delay:     gifImgs.Delay,

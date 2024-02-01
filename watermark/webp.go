@@ -2,8 +2,7 @@ package watermark
 
 import (
 	"errors"
-	"github.com/kolesa-team/go-webp/decoder"
-	"github.com/kolesa-team/go-webp/webp"
+	"github.com/nickalie/go-webpbin"
 	"image"
 	"image/draw"
 	"image/jpeg"
@@ -13,16 +12,23 @@ import (
 	"strings"
 )
 
-func WebpWatermark(offsetX int, offsetY int, imgType string, imgSource *os.File, imageBaseName string) (newImagePath string, err error) {
-	var imgBInfo image.Image
-	imgBInfo, _ = webp.Decode(imgSource, &decoder.Options{})
-	//fmt.Println("webp", imgBInfo.Bounds().Dx(), imgBInfo.Bounds().Dy())
+func (myNewImage MyNewImage) WebpWatermark() (newImagePath string, err error) {
+	imgSource := myNewImage.ImgSource
+	offsetX := myNewImage.OffsetX
+	offsetY := myNewImage.OffsetY
+	imageBaseName := myNewImage.ImageBaseName
+	logoUrl := myNewImage.LogoUrl
+
+	imgBInfo, er := webpbin.Decode(imgSource)
+	if er != nil {
+		return "", er
+	}
 	//读取水印图片
-	imgWatermark, isScale, err := GetLogoImage(imgBInfo.Bounds().Dx())
+	imgWatermark, isScale, err := GetLogoImage(imgBInfo.Bounds().Dy(), logoUrl)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println("webp2", imgWatermark.Bounds().Dx(), imgWatermark.Bounds().Dy())
+
 	//获取logo放的位置
 	randNumber := GetRand(4)
 	//fmt.Println(randNumber)
@@ -60,7 +66,7 @@ func WebpWatermark(offsetX int, offsetY int, imgType string, imgSource *os.File,
 	imageBaseName = strings.TrimSuffix(imageBaseName, path.Ext(imageBaseName)) + ".jpg"
 	imageNewPath := NewImageName(imageBaseName)
 	imgW, _ := os.Create(imageNewPath)
-	cErr := jpeg.Encode(imgW, m, &jpeg.Options{100})
+	cErr := jpeg.Encode(imgW, m, &jpeg.Options{Quality: 100})
 	if cErr != nil {
 		return "", cErr
 	}

@@ -10,23 +10,45 @@ import (
 	"strconv"
 )
 
-func PngJpgWaterMark(offsetX int, offsetY int, imgType string, imgSource *os.File, imageBaseName string) (newImagePath string, err error) {
+type MyNewImage struct {
+	OffsetX       int
+	OffsetY       int
+	ImgType       string
+	ImgSource     *os.File
+	ImageBaseName string
+	LogoUrl       string
+	LogoLocation  int
+}
+
+func (myNewImage MyNewImage) PngJpgWaterMark() (newImagePath string, err error) {
 	var imgBInfo image.Image
-	if imgType == "jpeg" {
-		imgBInfo, _ = jpeg.Decode(imgSource)
+	var er error
+	imgSource := myNewImage.ImgSource
+	offsetX := myNewImage.OffsetX
+	offsetY := myNewImage.OffsetY
+	imageType := myNewImage.ImgType
+	imageBaseName := myNewImage.ImageBaseName
+	logoUrl := myNewImage.LogoUrl
+	if imageType == "jpeg" {
+		imgBInfo, er = jpeg.Decode(imgSource)
 	} else {
-		imgBInfo, _ = png.Decode(imgSource)
+		imgBInfo, er = png.Decode(imgSource)
 	}
-	//fmt.Println("png", imgBInfo.Bounds().Dx(), imgBInfo.Bounds().Dy())
+	if er != nil {
+		return "", er
+	}
 	//读取水印图片
-	imgWatermark, isScale, err := GetLogoImage(imgBInfo.Bounds().Dx())
+	imgWatermark, isScale, err := GetLogoImage(imgBInfo.Bounds().Dy(), logoUrl)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println("png2", imgWatermark.Bounds().Dx(), imgWatermark.Bounds().Dy())
+
 	//获取logo放的位置
-	randNumber := GetRand(4)
-	//fmt.Println(randNumber)
+	randNumber := myNewImage.LogoLocation
+	if myNewImage.LogoLocation <= 0 {
+		randNumber = GetRand(4)
+	}
+
 	if isScale {
 		offsetX = offsetX / 8
 		offsetY = offsetY / 8
@@ -58,9 +80,9 @@ func PngJpgWaterMark(offsetX int, offsetY int, imgType string, imgSource *os.Fil
 
 	//输出图像
 	imageNewPath := NewImageName(imageBaseName)
-	//imageNewPath := "/Users/mac/Desktop/water-" + imageBaseName
+
 	imgW, _ := os.Create(imageNewPath)
-	cErr := jpeg.Encode(imgW, m, &jpeg.Options{100})
+	cErr := jpeg.Encode(imgW, m, &jpeg.Options{Quality: 100})
 	if cErr != nil {
 		return "", cErr
 	}
