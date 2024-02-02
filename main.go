@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 )
 
 // s3客服端
@@ -133,6 +134,12 @@ func downloadImageFromS3(key string) (originImg string) {
 
 // 上传添加logo的图片到s3
 func uploadToS3(newImagePath string, oldKey string) (url string, err error) {
+	//防止webp加水印后变jpg,后缀还是webp
+	newImagePathExt := path.Ext(newImagePath)
+	oldImagePathExt := path.Ext(oldKey)
+	if oldImagePathExt != newImagePathExt && len(newImagePathExt) > 0 && len(oldImagePathExt) > 0 {
+		oldKey = strings.Replace(oldKey, oldImagePathExt, newImagePathExt, 1)
+	}
 	newKey := watermarkPrefixPath + oldKey
 	fb, err := os.Open(newImagePath)
 	if err != nil {
