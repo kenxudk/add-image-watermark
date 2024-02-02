@@ -30,8 +30,10 @@ func (myNewImage MyNewImage) WebpWatermark() (newImagePath string, err error) {
 	}
 
 	//获取logo放的位置
-	randNumber := GetRand(4)
-	//fmt.Println(randNumber)
+	randNumber := myNewImage.LogoLocation
+	if myNewImage.LogoLocation <= 0 {
+		randNumber = GetRand(4)
+	}
 	if isScale {
 		offsetX = offsetX / 8
 		offsetY = offsetY / 8

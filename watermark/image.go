@@ -11,7 +11,7 @@ import (
 func AddLogoToImage(sourceImage string, event RequestData) (waterPath string) {
 	username := event.Name
 	//获取os环境变量中logo在图片中的X,Y坐标偏移
-	offsetX, offsetY := 80, 80
+	offsetX, offsetY := 10, 10
 
 	imgSource, err := os.Open(sourceImage)
 	if err != nil {

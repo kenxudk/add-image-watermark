@@ -34,16 +34,10 @@ func GetLogoImage(imageH int, logoUrl string) (image.Image, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	//按照加logo的图片和logo的图片12：1来缩小
 	logoH := imgWatermark.Bounds().Dy()
-	//12倍缩小后的logo宽和高
-	scaleH := imageH / 12
-	if scaleH < logoH {
-		minScaleH := logoH / 2
-		if scaleH < minScaleH {
-			scaleH = minScaleH
-		}
-		return resize.Thumbnail(uint(scaleH), uint(scaleH), imgWatermark, resize.Lanczos3), true, nil
+	if imageH < 200 {
+		scaleH := int(float64(logoH) * 0.7)
+		return resize.Thumbnail(uint(imgWatermark.Bounds().Dx()), uint(scaleH), imgWatermark, resize.Bicubic), true, nil
 	} else {
 		return imgWatermark, false, nil
 	}
@@ -120,56 +114,6 @@ func (t TextInfo) AddTextToLogo(imgSource *os.File) string {
 		return ""
 	}
 	return fileNamePath
-}
-
-// PngResize :缩小logo图片,最小缩小到一半
-// videoH 视频高
-func PngResize(imgPath string, videoH int) (string, error) {
-	// 打开原始图片文件
-	file, err := os.Open(imgPath)
-	if err != nil {
-		return imgPath, err
-	}
-	defer file.Close()
-
-	// 解码原始图片
-	img, _, err := image.Decode(file)
-	if err != nil {
-		return imgPath, err
-	}
-
-	// 计算缩放比例
-	origWidth := img.Bounds().Dx()
-	origHeight := img.Bounds().Dy()
-
-	scaleFactor := 12 //视频高和logo高的比例
-	newHeight := int(videoH / scaleFactor)
-	if newHeight >= origHeight {
-		return imgPath, nil
-	}
-	minHeight := float32(origHeight) * 0.5
-	if newHeight < int(minHeight) {
-		newHeight = int(minHeight)
-	}
-	newWidth := int(origWidth * (newHeight / origHeight))
-
-	// 创建一个新的图像，用于存储缩小后的图片
-	newImg := image.NewRGBA(image.Rect(0, 0, newWidth, newHeight))
-	draw.Draw(newImg, newImg.Bounds(), img, image.Point{X: 0, Y: 0}, draw.Src) // 使用 resize 方法进行等比例缩放
-
-	// 保存缩小后的图片
-	fileNamePath := "/tmp/logo-resized.png"
-	outputFile, err := os.Create(fileNamePath)
-	if err != nil {
-		return imgPath, err
-	}
-	defer outputFile.Close()
-
-	err = png.Encode(outputFile, newImg)
-	if err != nil {
-		return imgPath, err
-	}
-	return fileNamePath, nil
 }
 
 // 将十六进制颜色值转换为十进制值
