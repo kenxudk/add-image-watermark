@@ -2,7 +2,7 @@ package watermark
 
 import (
 	"errors"
-	"github.com/nickalie/go-webpbin"
+	"golang.org/x/image/webp"
 	"image"
 	"image/draw"
 	"image/jpeg"
@@ -18,8 +18,7 @@ func (myNewImage MyNewImage) WebpWatermark() (newImagePath string, err error) {
 	offsetY := myNewImage.OffsetY
 	imageBaseName := myNewImage.ImageBaseName
 	logoUrl := myNewImage.LogoUrl
-
-	imgBInfo, er := webpbin.Decode(imgSource)
+	imgBInfo, er := webp.Decode(imgSource)
 	if er != nil {
 		return "", er
 	}

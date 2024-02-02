@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	downloadImagePath := "./demo/test.gif"
+	downloadImagePath := "./demo/test.webp"
 	event := watermark.RequestData{
 		Name: "@kenxu",
 	}
